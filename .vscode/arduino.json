@@ -1,0 +1,6 @@
+{
+    "port": "COM3",
+    "configuration": "USBMode=default,UploadMode=default,PartitionScheme=default,DebugLevel=none,EraseFlash=none",
+    "board": "esp32:esp32:esp32s3usbotg",
+    "programmer": "esptool"
+}
