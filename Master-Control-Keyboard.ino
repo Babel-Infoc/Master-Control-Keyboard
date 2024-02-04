@@ -1,53 +1,77 @@
-//#include <SimpleRotary.h>
-
-#include <BleKeyboard.h>
-#include <EEPROM.h>
-#include <Adafruit_NeoPixel.h> 
-#include "pin_definitions.h"
-#include "Matrix.h"
-
-// Setup keyboard
-BleKeyboard Kbd("Master Control Keyboard", "Babel Infocalypse", 100);
+//////////////////////////////////////
+//           Library Setup          //
+//////////////////////////////////////
 
 // https://github.com/OfflineRocket/Sanctuary-Keyboard-Firmware
 // https://docs.arduino.cc/learn/built-in-libraries/eeprom/
 
-// Rotary encoder setup
-// SimpleRotary rotary(Rotary1,Rotary2,40);
-// byte RDir, PrevRDir;                        //Keep track of Rotary Encoder Direction
+// BLE Keyboard libraries
+#include <BleKeyboard.h>
+#include <EEPROM.h>
 
-//  Code to "store" devices, so that the keyboard can switch connections on the fly ////////////////////////////////////////////////////////////////////////
-// Adapted from : https://github.com/Cemu0/ESP32_USBHOST_TO_BLE_KEYBOARD/blob/main/src/USBHIDBootBLEKbd.cpp
-// Primarily stores the selected MAC address in EEPROM storage
-const int maxdevice = 3;
-uint8_t MACAddress[maxdevice][6] =
-    {
-        {0x35, 0xAF, 0xA4, 0x07, 0x0B, 0x66},
-        {0x31, 0xAE, 0xAA, 0x47, 0x0D, 0x61},
-        {0x31, 0xAE, 0xAC, 0x42, 0x0A, 0x31}
+// LED Libraries
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
+#include <Adafruit_NeoPixel.h>
 
-}; 
+// Keyboard files
+#include "pin_definitions.h"
+#include "Matrix.h"
 
-// Basically just change the selected ID and reset - MAC address can only be changed before the keyboard start, so write to store selection, until changed again
-// Take in device number, and set the EEPROM to the selected - selects what address to shift to, instead of iterating to that address
-/*void changeID(int DevNum)
-{
-  // Serial.println("changing MAC...");
+// GC9A01 display libraries
+#include <SPI.h>
+#include <TFT_eSPI.h>
+#include <AnimatedGIF.h>
+AnimatedGIF gif;
 
-  // Make sure the selection is valid
-  if (DevNum < maxdevice)
-  {
-    // Write and commit to storage, reset ESP 32
-    EEPROM.write(0, DevNum);
-    EEPROM.commit();
-    // esp_reset();
-    esp_sleep_enable_timer_wakeup(1);
-    esp_deep_sleep_start();
-  }
-}*/
+// Choose LCD Animation
+#include "ISS.h"
+#define GIF_IMAGE ISS
+// #include "terminal.h"
+// #define GIF_IMAGE terminal
 
-// Top unit LED's, #LED2
-extern Adafruit_NeoPixel strip2(LED2_NUM, LED2_PIN, NEO_GRB + NEO_KHZ800);
+// Rotary encoder library
+// #include <SimpleRotary.h>
+
+//////////////////////////////////////
+//          Component Setup         //
+//////////////////////////////////////
+
+// Setup keyboard
+BleKeyboard Kbd("Master Control Keyboard", "Babel Infocalypse", 100);
+
+// Setup LEDs
+Adafruit_NeoPixel strip1(LED1_NUM, LED1_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip2(LED2_NUM, LED2_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip3(LED3_NUM, LED3_PIN, NEO_GRB + NEO_KHZ800);
+
+/*
+// Define the main body LED matrix
+const short int LEDrows = 14, LEDcols = 19;
+const short int LEDMatrix[LEDrows][LEDcols] = {
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 , 1 ,-1 , 2 ,-1 , 3 ,-1 , 4 ,-1 , 5 ,-1 , 6 ,-1 , 7 ,-1 , 8 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 , 9 ,-1 , 10,-1 , 11,-1 , 12,-1 , 13,-1 , 14,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 , 15,-1 , 16,-1 ,-1 },
+  {-1 ,-1 , 17,-1 , 18,-1 , 19,-1 , 20,-1 , 21,-1 , 22,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 , 23,-1 , 24,-1 , 25,-1 , 26,-1 , 27,-1 , 28,-1 ,-1 ,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 , 29,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 , 31,-1 , 32,-1 , 33,-1 , 34,-1 , 35,-1 , 36,-1 ,-1 ,-1 , 30,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 , 37,-1 ,-1 ,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 , 38,-1 ,-1 },
+  {-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 ,-1 }
+};
+*/
+
+// GC9A01 display setup
+TFT_eSPI tft = TFT_eSPI();
+
+//////////////////////////////////////
+//            Void Setup            //
+//////////////////////////////////////
 
 void setup()
 {
@@ -64,27 +88,48 @@ void setup()
     pinMode(Rows[i], INPUT_PULLDOWN);
   }
 
-  // Setup the MAC address
-  EEPROM.begin(4);                                    // Begin EEPROM, allow us to store
-  int deviceChose = EEPROM.read(0);                   // Read selected address from storage
-  esp_base_mac_addr_set(&MACAddress[deviceChose][0]); // Set MAC address based on that stored value
-  //esp_iface_mac_addr_set(&MACAddress[deviceChose][0], ESP_MAC_BASE);
-  //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/misc_system_api.html?highlight=esp_base_mac_addr_set#_CPPv422esp_iface_mac_addr_setPK7uint8_t14esp_mac_type_t
-  //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/misc_system_api.html?highlight=esp_base_mac_addr_set#_CPPv414esp_mac_type_t
+  // Initialise Bluetooth Keyboard
+  Kbd.begin();
 
-  Kbd.begin();              // Initialise Bluetooth Keyboard
+  // Initialise LEDs
+  strip1.begin();
+  strip1.show();
+  strip1.setBrightness(50);
+  strip2.begin();
+  strip2.show();
+  strip2.setBrightness(50);
+  strip3.begin();
+  strip3.show();
+  strip3.setBrightness(50);
 
-  strip2.begin();            // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip2.show();             // Turn OFF all pixels ASAP
-  strip2.setBrightness(50);  // Set BRIGHTNESS to about 1/5 (max = 255)
-
+  // Initialise GC9A01
+  Serial.begin(115200);
+  tft.begin();
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+  gif.begin(BIG_ENDIAN_PIXELS);
 }
 
 int RowCnt = 0; // Keep track of scanned row - needs to be outside of the void loop so it isn't reset
 
-// Loops to iterate through all functions
+//////////////////////////////////////
+//             Void Loop            //
+//////////////////////////////////////
+
 void loop()
 {
+    if (gif.open((uint8_t *)GIF_IMAGE, sizeof(GIF_IMAGE), GIFDraw))
+  {
+    Serial.printf("Successfully opened GIF; Canvas size = %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
+    tft.startWrite();
+    while (gif.playFrame(true, NULL))
+    {
+      yield();
+    }
+    gif.close();
+    tft.endWrite();
+  }
+
   // Check if the keyboard is connected, if so, scan the matrix
   if (Kbd.isConnected())
   {
@@ -104,30 +149,6 @@ void loop()
         switch (KeyMatrix[RowCnt][ColCnt])
         {
         // Change the ID of the bluetooth, so you can connect to another device
-/*
-        case 0:
-        case 1:
-        case 2:
-          //changeID(KeyMatrix[RowCnt][ColCnt]);
-          break;
-        // Rotary encoder button, play pause not an int
-        case 3:
-          Kbd.press(KEY_MEDIA_PLAY_PAUSE);
-          break;
-        // All other buttons are pressed through the Layer array
-        case 5:
-          ESP.restart();
-          break;
-        case NULL_CON:
-          break;
-        case NEXT:
-          Kbd.press(KEY_MEDIA_NEXT_TRACK);
-          Kbd.releaseAll();
-          break;
-        case PREV:
-          Kbd.press(KEY_MEDIA_PREVIOUS_TRACK);
-          break;
-*/ // the switch looks a bit superfluous now
         default:
           Kbd.press(KeyMatrix[RowCnt][ColCnt]);
         }
@@ -141,39 +162,6 @@ void loop()
         // Switch based on the switch released
         switch (KeyMatrix[RowCnt][ColCnt])
         {
-        // Nothing for the tactile switch
-/*
-        case 1:
-        case 2:
-        case 0:
-          break;
-        // Release the rotary encoder button
-        case 3:
-          Kbd.release(KEY_MEDIA_PLAY_PAUSE);
-          break;
-        case FUNCTION_SW:
-          KeyIsPressed[RowCnt][ColCnt] = false;
-          
-          Kbd.release(KEY_MEDIA_PLAY_PAUSE);
-          Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
-          Kbd.release(KEY_MEDIA_NEXT_TRACK);
-          Kbd.releaseAll();
-          break;
-        case NULL_CON:
-          KeyIsPressed[RowCnt][ColCnt] = false;
-          Kbd.release(KEY_MEDIA_PLAY_PAUSE);
-          Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
-          Kbd.release(KEY_MEDIA_NEXT_TRACK);
-          Kbd.releaseAll();
-          break;
-        case NEXT:
-          Kbd.release(KEY_MEDIA_NEXT_TRACK);
-          break;
-        case PREV:
-          Kbd.release(KEY_MEDIA_PREVIOUS_TRACK);
-          break;
-        // Release all other keys on the keyboard
-*/ // the switch looks a bit superfluous now
         default:
           Kbd.release(KeyMatrix[RowCnt][ColCnt]);
         }
@@ -193,133 +181,27 @@ void loop()
     {
       RowCnt = 0;
     }
-    /*
-    // Check Rotary Encoder once a cycle
-    RDir = rotary.rotate();
-    switch (RDir)
-    {
-    case 1:
-      if (PrevRDir != RDir)
-      {
-        Kbd.release(KEY_MEDIA_VOLUME_UP);
-      }
-      Kbd.press(KEY_MEDIA_VOLUME_DOWN);
-      PrevRDir = 1;
-      break;
-    case 2:
-      if (PrevRDir != RDir)
-      {
-        Kbd.release(KEY_MEDIA_VOLUME_DOWN);
-      }
-      Kbd.press(KEY_MEDIA_VOLUME_UP);
-      PrevRDir = 2;
-      break;
-    default:
-      switch (PrevRDir)
-      {
-      case 1:
-        Kbd.release(KEY_MEDIA_VOLUME_DOWN);
-        break;
-      case 2:
-        Kbd.release(KEY_MEDIA_VOLUME_UP);
-        break;
-      }
-      PrevRDir = 0;
-      break;
-    }
-    */
-    rainbow(10);      // Animate LED;s
   }
+
+  Background();
 }
 
-// Rainbow cycle along whole strip. Pass delay time (in ms) between frames.
-extern void rainbow(int wait) {
-  // Hue of first pixel runs 5 complete loops through the color wheel.
-  // Color wheel has a range of 65536 but it's OK if we roll over, so
-  // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
-  // means we'll make 5*65536/256 = 1280 passes through this loop:
-  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
-    // strip.rainbow() can take a single argument (first pixel hue) or
-    // optionally a few extras: number of rainbow repetitions (default 1),
-    // saturation and value (brightness) (both 0-255, similar to the
-    // ColorHSV() function, default 255), and a true/false flag for whether
-    // to apply gamma correction to provide 'truer' colors (default true).
-    strip2.rainbow(firstPixelHue);
-    // Above line is equivalent to:
-    // strip.rainbow(firstPixelHue, 1, 255, 255, true);
-    strip2.show(); // Update strip with new contents
-    delay(wait);  // Pause for a moment
-  }
-}
-
-
-// send_string_as_keyreps(&Kbd, "a");
-/*
-void send_string_as_keyreps(BleKeyboard *keyb, const char *str)
+// LED background color
+void Background()
 {
-  uint8_t buf[keyboard_report_len]{0};
-  size_t key_idx = 0;
-  keyreport_t keyrep = {0};
-  char c;
-  uint8_t scan_code;
-  uint8_t mod;
-  bool duplicate;
-
-  // fetch a character and advance the string
-  c = *(str++);
-  // check if we need to use the shift key
-  mod = KC_SHIFT(c) ? KM_L_SHIFT : 0;
-  // pick the scan code
-  scan_code = KC_CHAR(c);
-
-  while (scan_code != '\0')
+  for (int i = 0; i < LED1_NUM; i++)
   {
-    keyrep.modifiers = mod;
-    keyrep.keys[key_idx++] = scan_code;
-
-    // fetch a character and advance the string
-    c = *(str++);
-    // check if we need to use the shift key
-    mod = KC_SHIFT(c) ? KM_L_SHIFT : 0;
-    // pick the scan code
-    scan_code = KC_CHAR(c);
-
-    // check for dupliate keystrokes, they need to be sent as new reports
-    duplicate = false;
-    for (size_t past_idx = 0; past_idx < key_idx; past_idx++)
-    {
-      if (scan_code == keyrep.keys[past_idx])
-      {
-        duplicate = true;
-      }
-    }
-    // check if we need to split the string into a new report
-    if ((keyrep.modifiers != mod) || // shift needs to be pressed or released,
-        (key_idx == 6) ||            // the key report is full
-        (scan_code == '\0') ||       // we've reached the end of the string
-        (duplicate == true)          // we need to send a repeated keystroke
-    )
-    {
-      // using methods from:
-      // https://github.com/T-vK/ESP32-BLE-Keyboard/blob/master/BleKeyboard.h
-      keyb->send_keyboard_report(
-          pack_keyboard_report(
-              keyrep.modifiers,
-              keyrep.keys,
-              buf));
-
-      // if a key is pressed in two subsequent reports,
-      // it is considered held for both reports.
-      // release all keys to allow repeated keypresses
-      key_idx = 0;
-      memset(keyrep.keys, 0, 6);
-
-      keyb->send_keyboard_report(
-          pack_keyboard_report(
-              0, // keyrep.modifiers, // send a fully open key map so we can safely stop here
-              keyrep.keys,
-              buf));
-    }
+    strip1.setPixelColor(i, strip1.Color(25, 25, 25));
+    strip1.show();
+  }
+  for (int i = 0; i < LED2_NUM; i++)
+  {
+    strip2.setPixelColor(i, strip2.Color(25, 25, 25));
+    strip2.show();
+  }
+  for (int i = 0; i < LED3_NUM; i++)
+  {
+    strip3.setPixelColor(i, strip3.Color(25, 25, 25));
+    strip3.show();
   }
 }
-*/

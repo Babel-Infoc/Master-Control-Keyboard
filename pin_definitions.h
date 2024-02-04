@@ -2,18 +2,21 @@
 #define PIN_DEFINITIONS_H
 
 /*  Pin mapping
-ROW1  4       COL1  35        SCL   21
-ROW2  5       COL2  36        SDA   14
-ROW3  6       COL3  37        RES   2
-ROW4  7       COL4  38        DC    13
-ROW5  15      COL5  39        CS    12
-ROW6  16      COL6  40        BLK   1
+Rows:         Columns:        GC9A01:                   LEDs:                   Module:
+ROW1  4       COL1  35        TFT_MOSI 14   (SDO)       LED1  45 (main body)    Pin 3
+ROW2  5       COL2  36        TFT_SCLK 21   (SCL)       LED2  48 (controller)   Pin 9
+ROW3  6       COL3  37        TFT_CS   12               LED3  47 (module)       Pin 10
+ROW4  7       COL4  38        TFT_DC   13                                       Pin 11
+ROW5  15      COL5  39        TFT_RST  2       
+ROW6  16      COL6  40        TFT_BL   1       
 ROW7  17      COL7  41        
 ROW8  18      COL8  42        
 */
 
+// Key Matrix Pin Definitions
+#define NumRows 8
+#define NumCols 8
 
-//Pin Definitions
 #define ROW1 4
 #define ROW2 5
 #define ROW3 6
@@ -32,28 +35,36 @@ ROW8  18      COL8  42
 #define COL7 41
 #define COL8 42
 
-//Rotary Pin Definitions
-#define Rotary1 15
-#define Rotary2 22
+// Controller LED's, #LED1
+#define LED1_PIN 48
+#define LED1_NUM 6
 
-//Matrix setup
-#define NumRows 8
-#define NumCols 8
+// Main body LED's, #LED2
+#define LED2_PIN 45
+#define LED2_NUM 38
 
-//LED definitions
-#define LED2_PIN 48
-#define LED2_NUM 6
+// Module LED's, #LED3
+#define LED3_PIN 47
+#define LED3_NUM 4
 
-#define FUNCTION_SW   256
-#define NULL_CON      257
-#define NEXT          258
-#define PREV          259
+//#define FUNCTION_SW   256
+//#define NULL_CON      257
+//#define NEXT          258
+//#define PREV          259
 
 // GC9A01 SPI pins
-//#define DC   13     // Data/command
-//#define CS   12     // Chip select
-//#define BLK  1      // Backlight
-//#define RES  2      // Reset
-//#define SDA  14     // Data
+// Edit "TFT_eSPI" library file named User_Setup.h
+
+    // Section 1: Uncomment the lines:
+    //      #define GC9A01_DRIVER
+    //      #define TFT_HEIGHT 240 // GC9A01 240 x 240
+
+    // Section 2: Uncomment and set Pin numbers:
+    //      #define TFT_MOSI 14   // SDO
+    //      #define TFT_SCLK 21   // SCL
+    //      #define TFT_CS   12
+    //      #define TFT_DC   13
+    //      #define TFT_RST  2
+    //      #define TFT_BL   1
 
 #endif // PIN_DEFINITIONS_H
