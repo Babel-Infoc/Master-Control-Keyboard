@@ -41,11 +41,7 @@ ROW8  18      COL8  42
 
 // Main body LED's, #LED2
 #define LED2_PIN 45
-#define LED2_NUM 38
-
-// Module LED's, #LED3
-#define LED3_PIN 47
-#define LED3_NUM 4
+#define LED2_NUM 42
 
 //#define FUNCTION_SW   256
 //#define NULL_CON      257

@@ -9,8 +9,8 @@
 extern short Rows[NumRows];
 extern short Cols[NumCols];
 
-extern bool KeyIsPressed[NumRows][NumCols];
+extern bool KeyIsPressed[NumCols][NumRows];
 
-extern int KeyMatrix[NumRows][NumCols];
+extern int KeyMatrix[NumCols][NumRows];
 
 #endif // MATRIX_H
