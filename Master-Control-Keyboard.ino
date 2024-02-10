@@ -10,10 +10,11 @@
 #include <EEPROM.h>
 
 // LED Libraries
-#include <Adafruit_GFX.h>
+//#include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
-#define SHADERSPEED 0.2 
+//#define SHADERSPEED 0.2
+
 // LED key pulse effects (circle pulse 2)
 float speed = 1.0;
 float offset = 0.1;
@@ -26,20 +27,21 @@ float size = 4.0;
 // GC9A01 display libraries
 #include <SPI.h>
 #include <TFT_eSPI.h>
-#include <AnimatedGIF.h>
-AnimatedGIF gif;
+//#include <AnimatedGIF.h>
+//AnimatedGIF gif;
 
-// Include the necessary libraries for the GC9A01 display
-#include <Adafruit_GFX.h>
-#include <Adafruit_GC9A01A.h>
+// EmberGL Graphics lib
+//#include <egl_device_lib.h>
+#include <egl_math.h>
+//#define mix lerp
 
 // Define the display dimensions
 #define TFT_WIDTH 240
 #define TFT_HEIGHT 240
 
 // Choose LCD Animation
-//#include "ISS.h"
-//#define GIF_IMAGE ISS
+// #include "ISS.h"
+// #define GIF_IMAGE ISS
 // #include "terminal.h"
 // #define GIF_IMAGE terminal
 
@@ -81,12 +83,80 @@ const short int LEDMatrix[LEDrows][LEDcols] = {
 // GC9A01 display setup
 TFT_eSPI tft = TFT_eSPI();
 
+
+//////////////////////////////////////
+//         Shader animation         //
+//////////////////////////////////////
+
+using namespace egl;
+vec3f hsb2rgb(vec3f c)
+{
+    vec3f rgb = clamp(abs(mod(c.x*6.0+vec3f(0.0,4.0,2.0),
+                             6.0)-3.0)-1.0,
+                     0.0,
+                     1.0 );
+    rgb = rgb*rgb*(3.0-2.0*rgb);
+    //return c.z * mix( vec3f(1.0), rgb, c.y);
+    return c.z * lerp( vec3f(1.0), rgb, c.y);
+}
+
+using namespace egl;
+vec4f mainImage(vec2f fragCoord , vec2f iResolution, float iTime)
+{
+  vec4f fragColor;
+  vec2f p = (2.0*fragCoord-iResolution)/iResolution.y;
+
+  //float r = length(p) * 0.9;
+  float r = norm(p) * 0.9;
+	vec3f color = hsb2rgb(vec3f(0.24, 0.7, 0.4));
+
+  float a = pow(r, 2.0);
+  float b = sin(r * 0.8 - 1.6);
+  float c = sin(r - 0.010);
+  float s = sin(a - iTime * 3.0 + b) * c;
+
+  color *= abs(1.0 / (s * 10.8)) - 0.01;
+  fragColor = clamp(vec4f(color, 1.), 0.0, 1.0);
+  return fragColor;
+}
+
+uint16_t frame_buffer[TFT_WIDTH*TFT_HEIGHT] = {0};
+
+
+using namespace egl; // Essential for EmberGL, do not remove
+void render_shader(float iTime){
+  // update the screen
+  vec2f ires(TFT_WIDTH,TFT_HEIGHT);
+  vec2f frag_coord(0,0);
+
+  for(int x = 0; x < TFT_WIDTH; x++){
+    for(int y = 0; y < TFT_HEIGHT; y++){
+      frag_coord.x = (float)x;
+      frag_coord.y = (float)y;
+      //compute the pixel
+      //vec4f frag_color = mainImage(frag_coord, ires, iTime);
+      vec4f frag_color((sin(iTime)+1.0)/2.0,(cos(iTime)+1.0)/2.0,0,0);
+      // set pixel
+      frame_buffer[x + TFT_WIDTH*y] = tft.color565(255*frag_color.x, 255*frag_color.y, 255*frag_color.z);
+    }
+  }
+  uint16_t *ptr = frame_buffer;
+  //tft.pushImageDMA(0, 0, TFT_WIDTH, TFT_HEIGHT, ptr);
+  //tft.setSwapBytes(false);
+  tft.setSwapBytes(true);
+  tft.pushImage(0, 0, TFT_WIDTH, TFT_HEIGHT, ptr);
+}
+
+
+
+
 //////////////////////////////////////
 //            Void Setup            //
 //////////////////////////////////////
 
 void setup()
 {
+
   // Initialize Column output pin and set default state
   for (int i = 0; i < NumCols; i++)
   {
@@ -99,6 +169,7 @@ void setup()
   {
     pinMode(Rows[i], INPUT_PULLDOWN);
   }
+  /*
 
   // Initialise Bluetooth Keyboard
   Kbd.begin();
@@ -106,20 +177,24 @@ void setup()
   // Initialise LEDs
   strip1.begin();
   strip1.show();
-  //strip1.setBrightness(20);
+  // strip1.setBrightness(20);
   strip2.begin();
   strip2.show();
-  //strip2.setBrightness(20);
+  // strip2.setBrightness(20);
 
+  */
   // Initialise GC9A01
   Serial.begin(115200);
-  tft.begin();
+  tft.init();
   tft.setRotation(0);
   tft.fillScreen(TFT_BLACK);
-  gif.begin(BIG_ENDIAN_PIXELS);
+  //tft.initDMA();
+  //gif.begin(BIG_ENDIAN_PIXELS);
 }
 
 int ColCnt = 0; // Keep track of scanned row - needs to be outside of the void loop so it isn't reset
+
+
 
 //////////////////////////////////////
 //             Void Loop            //
@@ -127,12 +202,12 @@ int ColCnt = 0; // Keep track of scanned row - needs to be outside of the void l
 
 void loop()
 {
-  //SlowFade( 1, 50, 1000 );
-  //ripples_abberation(1); // brightness multiplier
+  float iTime = ((float)millis())/(float)1e3;
+  render_shader(iTime);
 
-  CirclePulse();
-  //AnimatedGif();
-  // Check if the keyboard is connected, if so, scan the matrix
+  // AnimatedGif();
+  //  Check if the keyboard is connected, if so, scan the matrix
+  
   if (Kbd.isConnected())
   {
     // Initialize new Row to scan
@@ -160,8 +235,8 @@ void loop()
         // Switch based on the switch released
         switch (KeyMatrix[ColCnt][RowCnt])
         {
-          default:
-            Kbd.release(KeyMatrix[ColCnt][RowCnt]);
+        default:
+          Kbd.release(KeyMatrix[ColCnt][RowCnt]);
         }
         // Let the keyboard know it's off, and to not constantly release keys that aren't released
         KeyIsPressed[ColCnt][RowCnt] = false;
@@ -180,95 +255,49 @@ void loop()
       ColCnt = 0;
     }
   }
+  
 }
-
-
-
-
 
 // Slow fade
 float interval = 0;
 float brightness = 0;
+
 void SlowFade(int min, int max, int time)
 {
-  float delta = ((max - min) / time) ;
+  float delta = ((max - min) / time);
 
-  if (interval == 0){
+  if (interval == 0)
+  {
     brightness = min;
   }
-  if ( interval < ( time / 2 )) {
+  if (interval < (time / 2))
+  {
     brightness += delta;
     strip2.fill(strip2.Color(brightness, brightness, brightness));
   }
-  if ( interval >= ( time / 2 )) {
+  if (interval >= (time / 2))
+  {
     brightness -= delta;
     strip2.fill(strip2.Color(brightness, brightness, brightness));
   }
   strip2.show();
 
-  if (interval < time) {
+  if (interval < time)
+  {
     interval++;
-  } else {
+  }
+  else
+  {
     interval = 0;
   }
 }
 
 
 
+// https://github.com/EmberGL-org/EmberGL
+// https://github.com/JarkkoPFC/meshlete/
+
+// https://github.com/leonyuhanov/WOWPixelDriver
 
 
-
-
-
-
-
-float exponentialIn(float t) {
-  return t == 0.0 ? t : pow(2.0, 12.0 * (t - 1.0));
-}
-
-float map(float value, float inMin, float inMax, float outMin, float outMax) {
-  return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin);
-}
-
-float clamp(float value, float minVal, float maxVal) {
-  if (value < minVal) {
-    return minVal;
-  } else if (value > maxVal) {
-    return maxVal;
-  } else {
-    return value;
-  }
-}
 /*
-float smoothstep(float edge0, float edge1, float x) {
-  float t = clamp(map(x, edge0, edge1, 0.0, 1.0), 0.0, 1.0);
-  return t * t * (3.0 - 2.0 * t);
-}
-*/
-void CirclePulse()
-{
-  float aspect = TFT_WIDTH / TFT_HEIGHT;
-  float t = millis() * speed / 1000.0;
-  float t2 = (millis() * speed + offset * 1000.0) / 1000.0;
-  
-  //t = fmod(t, 1.0);
-  //t2 = fmod(t2, 1.0);
-  //
-  //t = clamp(exponentialIn(t), 0.0, 1.0);
-  //t2 = clamp(exponentialIn(t2), 0.0, 1.0);
-  
-  float circle1 = smoothstep(0.0, 0.01, (1.0 - map(t, 0.0, 1.0, 0.0, 1.0)) * size);
-  float circle2 = smoothstep(0.0, 0.01, (1.0 - map(t2, 0.0, 1.0, 0.0, 1.0)) * size);
-  
-  float pulse = circle2 - circle1;
-  pulse = clamp(pulse, 0.0, 1.0);
-  
-  // Output to screen
-  tft.fillScreen(TFT_BLACK);
-  tft.fillCircle(TFT_WIDTH / 2, TFT_HEIGHT / 2, map(pulse, 0.0, 1.0, 0.0, TFT_WIDTH / 2), TFT_WHITE);
-}
-
-
-
-
-
