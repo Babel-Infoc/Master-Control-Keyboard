@@ -11,8 +11,8 @@
 
 // LED Libraries
 //#include <Adafruit_GFX.h>
-#include <Adafruit_NeoMatrix.h>
-#include <Adafruit_NeoPixel.h>
+//#include <Adafruit_NeoMatrix.h>
+//#include <Adafruit_NeoPixel.h>
 //#define SHADERSPEED 0.2
 
 // LED key pulse effects (circle pulse 2)
@@ -27,8 +27,6 @@ float size = 4.0;
 // GC9A01 display libraries
 #include <SPI.h>
 #include <TFT_eSPI.h>
-//#include <AnimatedGIF.h>
-//AnimatedGIF gif;
 
 // EmberGL Graphics lib
 //#include <egl_device_lib.h>
@@ -39,12 +37,6 @@ float size = 4.0;
 #define TFT_WIDTH 240
 #define TFT_HEIGHT 240
 
-// Choose LCD Animation
-// #include "ISS.h"
-// #define GIF_IMAGE ISS
-// #include "terminal.h"
-// #define GIF_IMAGE terminal
-
 // Rotary encoder library
 // #include <SimpleRotary.h>
 
@@ -54,10 +46,6 @@ float size = 4.0;
 
 // Setup keyboard
 BleKeyboard Kbd("Master Control Keyboard", "Babel Infocalypse", 100);
-
-// Setup LEDs
-Adafruit_NeoPixel strip1(LED1_NUM, LED1_PIN, NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel strip2(LED2_NUM, LED2_PIN, NEO_GRB + NEO_KHZ800);
 
 /*
 // Define the main body LED matrix
@@ -87,41 +75,15 @@ TFT_eSPI tft = TFT_eSPI();
 //////////////////////////////////////
 //         Shader animation         //
 //////////////////////////////////////
+#include "st_simple_circle.h"
+#include "st_shader_art_coding_introduction.h"
+#include "st_oscilloscope.h"
+#include "st_sphere_of_cubes.h"
 
-using namespace egl;
-vec3f hsb2rgb(vec3f c)
-{
-    vec3f rgb = clamp(abs(mod(c.x*6.0+vec3f(0.0,4.0,2.0),
-                             6.0)-3.0)-1.0,
-                     0.0,
-                     1.0 );
-    rgb = rgb*rgb*(3.0-2.0*rgb);
-    //return c.z * mix( vec3f(1.0), rgb, c.y);
-    return c.z * lerp( vec3f(1.0), rgb, c.y);
-}
 
-using namespace egl;
-vec4f mainImage(vec2f fragCoord , vec2f iResolution, float iTime)
-{
-  vec4f fragColor;
-  vec2f p = (2.0*fragCoord-iResolution)/iResolution.y;
 
-  //float r = length(p) * 0.9;
-  float r = norm(p) * 0.9;
-	vec3f color = hsb2rgb(vec3f(0.24, 0.7, 0.4));
-
-  float a = pow(r, 2.0);
-  float b = sin(r * 0.8 - 1.6);
-  float c = sin(r - 0.010);
-  float s = sin(a - iTime * 3.0 + b) * c;
-
-  color *= abs(1.0 / (s * 10.8)) - 0.01;
-  fragColor = clamp(vec4f(color, 1.), 0.0, 1.0);
-  return fragColor;
-}
 
 uint16_t frame_buffer[TFT_WIDTH*TFT_HEIGHT] = {0};
-
 
 using namespace egl; // Essential for EmberGL, do not remove
 void render_shader(float iTime){
@@ -134,9 +96,16 @@ void render_shader(float iTime){
       frag_coord.x = (float)x;
       frag_coord.y = (float)y;
       //compute the pixel
-      //vec4f frag_color = mainImage(frag_coord, ires, iTime);
-      vec4f frag_color((sin(iTime)+1.0)/2.0,(cos(iTime)+1.0)/2.0,0,0);
+
+
+      //vec4f frag_color = simple_circle(frag_coord, ires, iTime);
+      //vec4f frag_color = shader_art_coding_introduction(frag_coord, ires, iTime);
+      vec4f frag_color = oscilloscope(frag_coord, ires, iTime);
+      //vec4f frag_color = sphereOfCubes(frag_coord, ires, iTime);
+
+      
       // set pixel
+      
       frame_buffer[x + TFT_WIDTH*y] = tft.color565(255*frag_color.x, 255*frag_color.y, 255*frag_color.z);
     }
   }
@@ -146,8 +115,6 @@ void render_shader(float iTime){
   tft.setSwapBytes(true);
   tft.pushImage(0, 0, TFT_WIDTH, TFT_HEIGHT, ptr);
 }
-
-
 
 
 //////////////////////////////////////
@@ -258,46 +225,31 @@ void loop()
   
 }
 
-// Slow fade
-float interval = 0;
-float brightness = 0;
-
-void SlowFade(int min, int max, int time)
-{
-  float delta = ((max - min) / time);
-
-  if (interval == 0)
-  {
-    brightness = min;
-  }
-  if (interval < (time / 2))
-  {
-    brightness += delta;
-    strip2.fill(strip2.Color(brightness, brightness, brightness));
-  }
-  if (interval >= (time / 2))
-  {
-    brightness -= delta;
-    strip2.fill(strip2.Color(brightness, brightness, brightness));
-  }
-  strip2.show();
-
-  if (interval < time)
-  {
-    interval++;
-  }
-  else
-  {
-    interval = 0;
-  }
-}
-
-
-
-// https://github.com/EmberGL-org/EmberGL
-// https://github.com/JarkkoPFC/meshlete/
-
-// https://github.com/leonyuhanov/WOWPixelDriver
-
 
 /*
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `egl::camera(egl::vec3<float>, egl::vec3<float>, float, egl::vec2<float>)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:31: multiple definition of `egl::camera(egl::vec3<float>, egl::vec3<float>, float, egl::vec2<float>)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:31: first defined here
+
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `egl::launch(egl::Camera, egl::vec2<float>)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:44: multiple definition of `egl::launch(egl::Camera, egl::vec2<float>)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:44: first defined here
+
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `egl::intersect_sphere(egl::Ray, egl::Sphere, float&, float&)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:58: multiple definition of `egl::intersect_sphere(egl::Ray, egl::Sphere, float&, float&)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:58: first defined here
+
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `egl::step_forward(egl::Ray, float&, egl::vec3<float>&, int&, float, float, float)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:74: multiple definition of `egl::step_forward(egl::Ray, float&, egl::vec3<float>&, int&, float, float, float)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:74: first defined here
+
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `egl::mysmoothstep(float)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:124: multiple definition of `egl::mysmoothstep(float)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:124: first defined here
+
+c:/users/neuromancer/appdata/local/arduino15/packages/esp32/tools/xtensa-esp32s3-elf-gcc/esp-2021r2-patch5-8.4.0/bin/../lib/gcc/xtensa-esp32s3-elf/8.4.0/../../../../xtensa-esp32s3-elf/bin/ld.exe: C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\st_sphere_of_cubes.cpp.o: in function `sphereOfCubes(egl::vec2<float>, egl::vec2<float>, float)':
+G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/st_sphere_of_cubes.cpp:134: multiple definition of `sphereOfCubes(egl::vec2<float>, egl::vec2<float>, float)'; C:\Users\Neuromancer\AppData\Local\Temp\arduino\sketches\2C7E8CCF49FA9CF80FF8172EF75C5AFE\sketch\sphere_of_cubes.cpp.o:G:\My Drive\Babel Cybernetics\-- Github LIVE\Master-Control-Keyboard/sphere_of_cubes.cpp:134: first defined here
+
+
+
+collect2.exe: error: ld returned 1 exit status
+
+exit status 1
+
+Compilation error: exit status 1
+*/
